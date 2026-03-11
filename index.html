@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- v2.0 - build 20260310 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -2212,20 +2211,69 @@ function exportarDatos(){
     credenciales: JSON.parse(lsGet('cobrador_credenciales')||'{}')
   };
   const json = JSON.stringify(datos, null, 2);
-  const blob = new Blob([json], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
   const fecha = new Date().toLocaleDateString('es-CO').replace(/\//g,'-');
-  a.href = url;
-  a.download = `copia-cuentas-${fecha}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const nombreArchivo = 'copia-cuentas-' + fecha + '.json';
+
   // Guardar fecha de última copia
   lsSet('ultima_copia', new Date().toISOString());
   actualizarInfoCopia();
-  showToast('✅ Copia descargada correctamente');
+
+  // iOS Safari: usar FileReader/data URI
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  if(isIOS || isSafari){
+    // En iOS no se puede forzar descarga, abrir en nueva pestaña para que el usuario guarde manualmente
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    const newTab = window.open(dataUri, '_blank');
+    if(newTab){
+      showToast('📱 Mantén pulsado el archivo para guardarlo');
+    } else {
+      // Si el popup fue bloqueado, mostrar el JSON en un alert para copiarlo
+      const ta = document.createElement('textarea');
+      ta.value = json;
+      ta.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;bottom:10px;z-index:9999;font-size:10px;padding:10px;';
+      ta.id = 'ta-copia-ios';
+      const cerrar = document.createElement('button');
+      cerrar.textContent = '✕ Cerrar';
+      cerrar.style.cssText = 'position:fixed;top:10px;right:10px;z-index:10000;padding:10px 16px;background:#ff3d3d;color:white;border:none;border-radius:10px;font-weight:800;font-size:14px;';
+      cerrar.onclick = function(){ ta.remove(); cerrar.remove(); instruc.remove(); };
+      const instruc = document.createElement('div');
+      instruc.style.cssText = 'position:fixed;top:60px;left:10px;right:10px;z-index:10000;background:#111;color:white;padding:12px;border-radius:12px;font-size:13px;font-weight:700;text-align:center;';
+      instruc.textContent = 'Selecciona todo el texto y cópialo en un archivo .json para guardarlo';
+      document.body.appendChild(ta);
+      document.body.appendChild(cerrar);
+      document.body.appendChild(instruc);
+      ta.select();
+      showToast('📋 Copia el texto y guárdalo como .json');
+    }
+    return;
+  }
+
+  // Navegadores modernos (Chrome, Firefox, Android)
+  try {
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    showToast('✅ Copia descargada correctamente');
+  } catch(e) {
+    // Fallback: data URI
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    const a = document.createElement('a');
+    a.href = dataUri;
+    a.download = nombreArchivo;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('✅ Copia descargada');
+  }
 }
 
 function importarDatos(event){
