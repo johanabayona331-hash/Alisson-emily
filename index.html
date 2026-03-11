@@ -1,5 +1,4 @@
-
-       <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -3486,15 +3485,48 @@ function descargarBackupDirecto(){
     porcentaje_interes:porcentaje,
     manuales
   };
-  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
   const nombre='backup_alisson_emily_'+hoy+'.json';
-  a.href=url; a.download=nombre;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('✅ Backup descargado: '+nombre);
+  const json=JSON.stringify(backup,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+
+  // Intentar Web Share API (funciona en APK Android)
+  if(navigator.share && navigator.canShare){
+    const file=new File([blob], nombre, {type:'application/json'});
+    if(navigator.canShare({files:[file]})){
+      navigator.share({
+        title:'Backup Alisson & Emily',
+        text:'Copia de seguridad '+hoy,
+        files:[file]
+      }).then(()=>showToast('✅ Backup compartido'))
+        .catch(e=>{ if(e.name!=='AbortError') compartirComoTexto(json,nombre); });
+      return;
+    }
+  }
+  // Si no soporta compartir archivos, compartir como texto
+  compartirComoTexto(json, nombre);
+}
+
+function compartirComoTexto(json, nombre){
+  // Intentar descargar normal
+  try{
+    const blob=new Blob([json],{type:'application/octet-stream'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nombre;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Backup guardado: '+nombre);
+  }catch(e){
+    // Último recurso: compartir texto plano
+    if(navigator.share){
+      navigator.share({title:'Backup Alisson & Emily', text:json})
+        .then(()=>showToast('✅ Backup compartido'))
+        .catch(()=>showToast('⚠️ No se pudo compartir'));
+    } else {
+      showToast('⚠️ Este dispositivo no soporta compartir archivos');
+    }
+  }
 }
 
 // ===== PDF RUTA COMPLETA =====
@@ -3682,4 +3714,3 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
- 
