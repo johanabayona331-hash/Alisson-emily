@@ -3500,15 +3500,23 @@ function descargarBackupDirecto(){
     porcentaje_interes:porcentaje,
     manuales
   };
-  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
+  const json=JSON.stringify(backup,null,2);
   const nombre='backup_alisson_emily_'+hoy+'.json';
-  a.href=url; a.download=nombre;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('✅ Backup descargado: '+nombre);
+  try {
+    const blob=new Blob([json],{type:'application/octet-stream'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nombre;
+    a.style.display='none';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); },2000);
+    showToast('✅ Backup guardado: '+nombre);
+  } catch(e) {
+    const blob=new Blob([json],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    showToast('💾 Toca los 3 puntitos y elige Descargar');
+  }
 }
 
 // ===== PDF RUTA COMPLETA =====
