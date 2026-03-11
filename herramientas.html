@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Herramientas – Alisson & Emily</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Nunito',sans-serif;background:#f0f4ff;min-height:100vh;padding-bottom:40px;}
+  .topbar{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:18px 16px 14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.25);}
+  .topbar h1{font-size:20px;font-weight:900;}
+  .topbar p{font-size:12px;color:rgba(255,255,255,0.5);font-weight:700;margin-top:2px;}
+  .tabs{display:flex;background:white;border-bottom:2px solid #e5e7eb;position:sticky;top:72px;z-index:99;}
+  .tab{flex:1;padding:13px 8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;border:none;background:none;cursor:pointer;color:#999;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;}
+  .tab.activo{color:#5b8dee;border-bottom-color:#5b8dee;}
+  .seccion{padding:16px;}
+  .card{background:white;border-radius:20px;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.06);border:1.5px solid #e5e7eb;}
+  .card-titulo{font-size:13px;font-weight:900;color:#333;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;}
+  .card-sub{font-size:12px;color:#999;font-weight:700;margin-bottom:14px;line-height:1.5;}
+  .btn{width:100%;padding:14px;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s;}
+  .btn:active{transform:scale(0.97);}
+  .btn-blue{background:linear-gradient(135deg,#5b8dee,#3b6cd4);color:white;box-shadow:0 4px 14px rgba(91,141,238,0.35);}
+  .btn-green{background:linear-gradient(135deg,#00b84a,#00874a);color:white;box-shadow:0 4px 14px rgba(0,168,68,0.35);}
+  .btn-red{background:linear-gradient(135deg,#f59e0b,#e06500);color:white;box-shadow:0 4px 14px rgba(224,101,0,0.3);}
+  .btn-gray{background:#f3f4f6;color:#555;border:1.5px solid #e5e7eb;}
+  .fecha-row{display:flex;gap:8px;margin-bottom:14px;align-items:center;}
+  .fecha-input{flex:1;padding:12px 14px;border:2px solid #e5e7eb;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:#111;background:white;}
+  .fecha-input:focus{outline:none;border-color:#5b8dee;}
+  .btn-hoy{padding:12px 14px;background:#eef2ff;color:#5b8dee;border:2px solid #c7d7fc;border-radius:14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;white-space:nowrap;}
+  #reporte-preview{display:none;background:#fafbff;border-radius:16px;border:1.5px solid #c7d7fc;padding:14px;margin-top:12px;}
+  .rp-resumen{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .rp-caja{background:white;border-radius:12px;padding:10px 12px;border:1.5px solid #e5e7eb;text-align:center;}
+  .rp-caja .val{font-size:16px;font-weight:900;color:#5b8dee;}
+  .rp-caja .lbl{font-size:10px;color:#aaa;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+  .preview-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+  .preview-tabla{width:100%;border-collapse:collapse;font-size:11px;}
+  .preview-tabla th{background:#1a1a2e;color:white;padding:6px 4px;text-align:left;font-weight:900;font-size:10px;white-space:nowrap;}
+  .preview-tabla td{padding:5px 4px;border-bottom:1px solid #f0f0f0;vertical-align:middle;white-space:nowrap;}
+  .preview-tabla tr:nth-child(even) td{background:#f5f8ff;}
+  .estado-box{background:#fff7ed;border:2px solid #fed7aa;border-radius:16px;padding:14px;margin-bottom:14px;font-size:13px;color:#92400e;font-weight:700;text-align:center;}
+  .estado-ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
+  .pantalla{display:none;}
+  .pantalla.activa{display:block;}
+  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(30px);background:#1a1a2e;color:white;padding:12px 22px;border-radius:50px;font-size:14px;font-weight:800;opacity:0;transition:all .3s;z-index:9999;pointer-events:none;white-space:nowrap;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #spinner{display:none;position:fixed;inset:0;background:rgba(26,26,46,0.75);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+  #spinner.show{display:flex;}
+  .spin{width:48px;height:48px;border:5px solid rgba(255,255,255,0.2);border-top-color:white;border-radius:50%;animation:sp .8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .spin-txt{color:white;font-weight:800;font-size:15px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🛠️ Herramientas</h1>
+  <p>Alisson & Emily — PDF e Impresión</p>
+</div>
+
+<div class="tabs">
+  <button class="tab activo" onclick="cambiarTab('imprimir')" id="tab-imprimir">📄 PDF / Imprimir</button>
+  <button class="tab" onclick="cambiarTab('backup')" id="tab-backup">💾 Backup</button>
+</div>
+
+<div class="pantalla activa seccion" id="pantalla-imprimir">
+  <div class="card">
+    <div class="card-titulo">📅 Selecciona el día</div>
+    <div class="card-sub">Elige cualquier fecha. Se genera un PDF listo para descargar e imprimir.</div>
+    <div class="fecha-row">
+      <input type="date" class="fecha-input" id="fecha-reporte">
+      <button class="btn-hoy" onclick="setHoy()">Hoy</button>
+    </div>
+    <button class="btn btn-blue" onclick="cargarReporte()">🔍 Ver reporte</button>
+  </div>
+
+  <div id="reporte-preview">
+    <div class="rp-resumen">
+      <div class="rp-caja"><div class="val" id="rp-recaudado">$0</div><div class="lbl">Recaudado</div></div>
+      <div class="rp-caja"><div class="val" id="rp-cuotas">$0</div><div class="lbl">Cuotas día</div></div>
+      <div class="rp-caja"><div class="val" id="rp-pagaron">0</div><div class="lbl">Pagaron</div></div>
+      <div class="rp-caja"><div class="val" id="rp-activos">0</div><div class="lbl">Activos</div></div>
+    </div>
+    <div class="preview-scroll">
+      <table class="preview-tabla">
+        <thead><tr>
+          <th>#</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Saldo</th><th>Cuota</th><th>Estado</th><th>Hoy</th>
+        </tr></thead>
+        <tbody id="preview-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-green" onclick="generarPDF()">⬇️ Descargar PDF</button>
+  </div>
+</div>
+
+<div class="pantalla seccion" id="pantalla-backup">
+  <div class="card">
+    <div class="card-titulo">📥 Descargar copia de seguridad</div>
+    <div class="card-sub">Guarda todos tus clientes, pagos e historial en un archivo JSON.</div>
+    <button class="btn btn-green" onclick="descargarBackup()">⬇️ Descargar backup .json</button>
+  </div>
+  <div class="card">
+    <div class="card-titulo">📤 Restaurar copia de seguridad</div>
+    <div class="card-sub">Selecciona el archivo .json descargado. <strong>⚠️ Reemplaza los datos actuales.</strong></div>
+    <input type="file" id="archivo-restore" accept=".json" style="display:none" onchange="restaurarBackup(this)">
+    <button class="btn btn-red" onclick="document.getElementById('archivo-restore').click()">📂 Seleccionar archivo .json</button>
+  </div>
+  <div class="card">
+    <div class="card-titulo">📊 Estado actual</div>
+    <div class="card-sub">Resumen de los datos guardados en esta app.</div>
+    <div id="estado-info" class="estado-box">Cargando...</div>
+    <button class="btn btn-gray" onclick="actualizarEstado()">🔄 Actualizar</button>
+  </div>
+</div>
+
+<div id="spinner"><div class="spin"></div><div class="spin-txt">Generando PDF...</div></div>
+<div id="toast"></div>
+
+<script>
+function fmt(n){ return '$'+Math.abs(n).toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtN(n){ return n===0||n==='-'?'-':Math.abs(n).toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+function fechaHoy(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fechaBonita(f){
+  if(!f) return '';
+  const [y,m,d]=f.split('-');
+  const M=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return `${parseInt(d)} de ${M[parseInt(m)-1]} de ${y}`;
+}
+function showToast(msg,ms=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),ms);
+}
+function spinner(on){ document.getElementById('spinner').classList[on?'add':'remove']('show'); }
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function getClientes(){ return JSON.parse(lsGet('clientes_v1')||'[]'); }
+function getHistorial(){ return JSON.parse(lsGet('hist_v3')||'[]'); }
+
+function cambiarTab(id){
+  document.querySelectorAll('.pantalla').forEach(p=>p.classList.remove('activa'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('activo'));
+  document.getElementById('pantalla-'+id).classList.add('activa');
+  document.getElementById('tab-'+id).classList.add('activo');
+  if(id==='backup') actualizarEstado();
+}
+function setHoy(){ document.getElementById('fecha-reporte').value=fechaHoy(); }
+
+function diasHabilesDesde(fechaStr, hastaStr){
+  if(!fechaStr) return 0;
+  const inicio=new Date(fechaStr+'T00:00:00');
+  const hasta=hastaStr?new Date(hastaStr+'T00:00:00'):new Date();
+  hasta.setHours(0,0,0,0);
+  if(inicio>=hasta) return 0;
+  let dias=0; const cur=new Date(inicio); cur.setDate(cur.getDate()+1);
+  while(cur<=hasta){ if(cur.getDay()!==0) dias++; cur.setDate(cur.getDate()+1); }
+  return dias;
+}
+function calcularAtraso(c, fecha){
+  if(!c||c.saldo<=0) return 0;
+  const inicio=c.fechaRenovacion||c.fechaCreado||''; if(!inicio) return 0;
+  const trans=diasHabilesDesde(inicio,fecha);
+  const pagado=(c.pagos||[]).filter(p=>!fecha||p.fecha<=fecha).reduce((s,p)=>s+p.monto,0);
+  const cub=c.cuotaSugerida>0?Math.floor(pagado/c.cuotaSugerida):(c.pagos||[]).filter(p=>!fecha||p.fecha<=fecha).length;
+  return trans-cub;
+}
+function estadoStr(atraso,tipo){
+  const u=(tipo||'').toLowerCase()==='semanal'?'s':'d';
+  if(atraso>0) return `${atraso}${u} atraso`;
+  if(atraso<0) return `${Math.abs(atraso)}${u} adelanto`;
+  return 'Al dia';
+}
+
+function generarFilas(fecha){
+  const clientes=getClientes();
+  const filas=[]; let recaudado=0,cuotasDia=0,pagaron=0,activos=0;
+  clientes.forEach((c,i)=>{
+    if(c.saldo<=0) return;
+    activos++;
+    const pd=(c.pagos||[]).filter(p=>p.fecha===fecha);
+    const mp=pd.reduce((s,p)=>s+p.monto,0);
+    const cuota=c.cuotaSugerida||0;
+    recaudado+=mp; cuotasDia+=cuota; if(mp>0) pagaron++;
+    const atraso=calcularAtraso(c,fecha);
+    filas.push({
+      num:i+1, nombre:c.nombre||'', cedula:c.cedula||'000', tel:c.tel||'000',
+      tipo:c.tipo?(c.tipo.charAt(0).toUpperCase()+c.tipo.slice(1)):'Diario',
+      total:c.prestamo||0, saldo:c.saldo||0, cuota, atraso, mp
+    });
+  });
+  return {filas,recaudado,cuotasDia,pagaron,activos};
+}
+
+function cargarReporte(){
+  const fecha=document.getElementById('fecha-reporte').value;
+  if(!fecha){ showToast('⚠️ Elige una fecha primero'); return; }
+  const clientes=getClientes();
+  if(!clientes.length){ showToast('⚠️ No hay clientes. ¿Mismo dominio que la app principal?'); return; }
+  const {filas,recaudado,cuotasDia,pagaron,activos}=generarFilas(fecha);
+  document.getElementById('rp-recaudado').textContent=fmt(recaudado);
+  document.getElementById('rp-cuotas').textContent=fmt(cuotasDia);
+  document.getElementById('rp-pagaron').textContent=pagaron;
+  document.getElementById('rp-activos').textContent=activos;
+  const tbody=document.getElementById('preview-tbody');
+  tbody.innerHTML=filas.map(f=>{
+    const ac=f.atraso>0?'#cc2222':f.atraso<0?'#007700':'#0044cc';
+    const hoy=f.mp>0?`<b style="color:#006600">${fmt(f.mp)}</b>`:`<span style="color:#ccc">-</span>`;
+    return `<tr><td style="color:#aaa">${f.num}</td><td><b>${f.nombre}</b></td><td>${f.tipo}</td>
+      <td style="text-align:right">${fmt(f.total)}</td>
+      <td style="text-align:right;color:#cc2222;font-weight:800">${fmt(f.saldo)}</td>
+      <td style="text-align:right;color:#5b8dee;font-weight:800">${f.cuota>0?fmt(f.cuota):'-'}</td>
+      <td style="color:${ac};font-weight:800">${estadoStr(f.atraso,f.tipo)}</td>
+      <td style="text-align:right">${hoy}</td></tr>`;
+  }).join('');
+  document.getElementById('reporte-preview').style.display='block';
+  document.getElementById('reporte-preview').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GENERAR PDF  — formato portrait, encabezado a la izquierda
+//  igual a la imagen 1
+// ══════════════════════════════════════════════════════════════
+function generarPDF(){
+  const fecha=document.getElementById('fecha-reporte').value;
+  if(!fecha){ showToast('⚠️ Elige una fecha primero'); return; }
+  const clientes=getClientes();
+  if(!clientes.length){ showToast('⚠️ No hay clientes'); return; }
+
+  spinner(true);
+  setTimeout(()=>{
+    try{
+      const {filas,recaudado,cuotasDia,pagaron,activos}=generarFilas(fecha);
+      const totalSaldo=filas.reduce((s,f)=>s+f.saldo,0);
+      const ahora=new Date();
+      const horaImp=ahora.toLocaleDateString('es-CO')+', '+ahora.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+
+      const {jsPDF}=window.jspdf;
+      // ▶ PORTRAIT (vertical), tamaño carta
+      const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+
+      const AZUL_OSC=[26,26,46];
+      const ROJO=[180,0,0];
+      const VERDE=[0,120,0];
+      const AZUL_EST=[0,60,180];
+      const ROJO_FILA=[255,242,242];
+      const GRIS_ALT=[245,246,255];
+
+      // Márgenes
+      const ML=12, MR=12, PW=215.9-ML-MR; // ancho útil ~192mm
+
+      // ── Encabezado (texto izquierda, sin caja de color) ──────────────────
+      function dibujarCabecera(doc, yStart){
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(13);
+        doc.setTextColor(0,0,0);
+        doc.text('CLIENTES - RUTA', ML, yStart+5);
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(60,60,60);
+        doc.text(
+          `FECHA: ${fecha} | IMPRESION: ${horaImp} | CLIENTES ACTIVOS: ${activos}`,
+          ML, yStart+10
+        );
+        doc.text(
+          `SALDO TOTAL: ${fmt(totalSaldo)} | CUOTAS HOY: ${fmt(cuotasDia)} | RECAUDADO: ${fmt(recaudado)} | PAGARON HOY: ${pagaron} clientes`,
+          ML, yStart+15
+        );
+        // línea separadora fina
+        doc.setDrawColor(200,200,200);
+        doc.setLineWidth(0.3);
+        doc.line(ML, yStart+17.5, ML+PW, yStart+17.5);
+        return yStart+20; // Y donde empieza la tabla
+      }
+
+      const yTabla=dibujarCabecera(doc, 10);
+
+      // ── Tabla ─────────────────────────────────────────────────────────────
+      // Columnas: # | CLIENTE | CED | TEL | TIPO | TOTAL | SALDO | CUOTA | ESTADO HOY | HOY
+      const cols=[
+        {header:'#',          dataKey:'num'},
+        {header:'CLIENTE',    dataKey:'nombre'},
+        {header:'CED',        dataKey:'cedula'},
+        {header:'TEL',        dataKey:'tel'},
+        {header:'TIPO',       dataKey:'tipo'},
+        {header:'TOTAL',      dataKey:'total'},
+        {header:'SALDO',      dataKey:'saldo'},
+        {header:'CUOTA',      dataKey:'cuota'},
+        {header:'ESTADO HOY', dataKey:'estado'},
+        {header:'HOY',        dataKey:'hoy'},
+      ];
+
+      const rows=filas.map(f=>({
+        num:    String(f.num),
+        nombre: f.nombre,
+        cedula: f.cedula,
+        tel:    f.tel,
+        tipo:   f.tipo,
+        total:  fmtN(f.total),
+        saldo:  fmtN(f.saldo),
+        cuota:  f.cuota>0?fmtN(f.cuota):'-',
+        estado: estadoStr(f.atraso,f.tipo),
+        hoy:    f.mp>0?fmtN(f.mp):'-',
+        _atraso:f.atraso,
+        _mp:    f.mp
+      }));
+
+      doc.autoTable({
+        startY: yTabla,
+        margin:{left:ML, right:MR},
+        tableWidth: PW,
+        columns: cols,
+        body: rows,
+        foot:[[
+          {content:'TOTALES', colSpan:5, styles:{halign:'left',fontStyle:'bold'}},
+          {content:fmtN(totalSaldo), styles:{halign:'right'}},
+          {content:fmtN(cuotasDia),  styles:{halign:'right'}},
+          {content:''},
+          {content:fmtN(recaudado),  styles:{halign:'right'}},
+        ]],
+        showFoot:'lastPage',
+        styles:{
+          fontSize: 6.8,
+          cellPadding: {top:1.5, bottom:1.5, left:1.5, right:1.5},
+          overflow:'linebreak',
+          font:'helvetica',
+          lineColor:[220,220,220],
+          lineWidth:0.1,
+          textColor:[0,0,0],
+        },
+        headStyles:{
+          fillColor: AZUL_OSC,
+          textColor: [255,255,255],
+          fontStyle: 'bold',
+          fontSize: 6.8,
+          halign: 'left',
+          cellPadding:{top:2,bottom:2,left:1.5,right:1.5},
+        },
+        footStyles:{
+          fillColor: AZUL_OSC,
+          textColor: [255,255,255],
+          fontStyle: 'bold',
+          fontSize: 7,
+          halign: 'right',
+        },
+        columnStyles:{
+          num:    {cellWidth:7,   halign:'right'},
+          nombre: {cellWidth:'auto', fontStyle:'bold'},
+          cedula: {cellWidth:18},
+          tel:    {cellWidth:22},
+          tipo:   {cellWidth:14},
+          total:  {cellWidth:17,  halign:'right'},
+          saldo:  {cellWidth:17,  halign:'right'},
+          cuota:  {cellWidth:14,  halign:'right'},
+          estado: {cellWidth:22},
+          hoy:    {cellWidth:14,  halign:'right'},
+        },
+        alternateRowStyles:{ fillColor: GRIS_ALT },
+        didParseCell(data){
+          if(data.section!=='body') return;
+          const r=data.row.raw;
+          if(data.column.dataKey==='estado'){
+            data.cell.styles.fontStyle='bold';
+            if(r._atraso>0)       data.cell.styles.textColor=ROJO;
+            else if(r._atraso<0)  data.cell.styles.textColor=VERDE;
+            else                   data.cell.styles.textColor=AZUL_EST;
+          }
+          if(data.column.dataKey==='saldo'){
+            data.cell.styles.textColor=ROJO;
+            data.cell.styles.fontStyle='bold';
+          }
+          if(data.column.dataKey==='hoy' && r._mp>0){
+            data.cell.styles.textColor=VERDE;
+            data.cell.styles.fontStyle='bold';
+          }
+          if(r._atraso>0){
+            // fila roja solo si no es la alternada
+            data.cell.styles.fillColor=ROJO_FILA;
+          }
+        },
+        didDrawPage(data){
+          // Número de página abajo centrado
+          const n=doc.internal.getCurrentPageInfo().pageNumber;
+          const tot=doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150,150,150);
+          doc.text(
+            `Página ${n} de ${tot}  |  Alisson & Emily  |  ${fechaBonita(fecha)}`,
+            215.9/2, 272, {align:'center'}
+          );
+          // Si hay página siguiente, repetir encabezado
+          if(n < tot){
+            // la siguiente página ya la dibujará autoTable; no hacemos nada aquí
+          }
+        },
+        // Repetir la cabecera de columnas en cada página
+        showHead:'everyPage',
+        // NO repetir texto de encabezado de app en páginas 2+
+        // (autoTable empieza en startY sólo en p1; en p2+ empieza desde el margen top)
+        didDrawCell: undefined,
+      });
+
+      const nombre=`ruta_${fecha}.pdf`;
+      doc.save(nombre);
+      spinner(false);
+      showToast('✅ PDF descargado: '+nombre, 3500);
+    }catch(err){
+      spinner(false);
+      console.error(err);
+      showToast('❌ Error: '+err.message);
+    }
+  },100);
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────────
+function descargarBackup(){
+  const clientes=getClientes(), historial=getHistorial();
+  const credenciales=JSON.parse(lsGet('cobrador_credenciales')||'{}');
+  const porcentaje=lsGet('porcentaje_interes')||'20';
+  const manuales={};
+  const hoy=fechaHoy();
+  [...historial.map(h=>h.fecha),hoy].forEach(f=>{
+    const v=lsGet('sup_manual_'+f); if(v) manuales['sup_manual_'+f]=JSON.parse(v);
+  });
+  const backup={version:2,fecha_backup:new Date().toISOString(),clientes,historial,credenciales,porcentaje_interes:porcentaje,manuales};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const nombre='backup_alisson_emily_'+hoy+'.json';
+  a.href=url; a.download=nombre;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('✅ Backup descargado: '+nombre);
+  actualizarEstado();
+}
+
+function restaurarBackup(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const datos=JSON.parse(e.target.result);
+      if(!datos.clientes){ showToast('⚠️ Archivo inválido'); return; }
+      const ok=confirm('⚠️ ATENCIÓN\n\nEsto reemplazará TODOS los datos actuales.\n\nEl backup tiene '+datos.clientes.length+' clientes.\n\n¿Continuar?');
+      if(!ok){ input.value=''; return; }
+      lsSet('clientes_v1',JSON.stringify(datos.clientes||[]));
+      lsSet('hist_v3',JSON.stringify(datos.historial||[]));
+      if(datos.credenciales&&Object.keys(datos.credenciales).length) lsSet('cobrador_credenciales',JSON.stringify(datos.credenciales));
+      if(datos.porcentaje_interes) lsSet('porcentaje_interes',String(datos.porcentaje_interes));
+      if(datos.manuales) Object.entries(datos.manuales).forEach(([k,v])=>lsSet(k,JSON.stringify(v)));
+      showToast('✅ Datos restaurados correctamente');
+      actualizarEstado();
+    }catch(err){ showToast('❌ Error al leer el archivo'); }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+function actualizarEstado(){
+  const clientes=getClientes(), historial=getHistorial(), hoy=fechaHoy();
+  const activos=clientes.filter(c=>c.saldo>0).length;
+  const pagosHoy=clientes.filter(c=>(c.pagos||[]).some(p=>p.fecha===hoy)).length;
+  const totalSaldo=clientes.reduce((s,c)=>s+(c.saldo||0),0);
+  const box=document.getElementById('estado-info');
+  if(!clientes.length){
+    box.className='estado-box';
+    box.innerHTML='⚠️ No hay datos guardados aquí.<br><small>Esta página debe estar en el <b>mismo dominio</b> que tu app principal.</small>';
+  } else {
+    box.className='estado-box estado-ok';
+    box.innerHTML=`✅ Datos encontrados<br><span style="font-size:12px;display:block;margin-top:6px">👥 ${clientes.length} clientes · ${activos} activos<br>💸 Saldo total: <b>${fmt(totalSaldo)}</b><br>📅 Pagaron hoy: ${pagosHoy} clientes<br>📋 Días en historial: ${historial.length}</span>`;
+  }
+}
+
+window.onload=function(){ setHoy(); actualizarEstado(); };
+</script>
+</body>
+</html>
