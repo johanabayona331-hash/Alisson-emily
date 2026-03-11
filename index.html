@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+       <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -360,6 +361,16 @@ body {
       </div>
     </div>
   </div>
+  <!-- Botones PDF y Backup -->
+  <div style="margin:10px 14px 0;display:flex;gap:8px">
+    <button onclick="generarPDFRuta()" style="flex:1;padding:13px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+      📄 PDF Ruta
+    </button>
+    <button onclick="descargarBackupDirecto()" style="flex:1;padding:13px;background:linear-gradient(135deg,#00874a,#00b84a);color:white;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+      💾 Backup
+    </button>
+  </div>
+
   <div id="clientes-lista"></div>
 </div>
 
@@ -2211,69 +2222,20 @@ function exportarDatos(){
     credenciales: JSON.parse(lsGet('cobrador_credenciales')||'{}')
   };
   const json = JSON.stringify(datos, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   const fecha = new Date().toLocaleDateString('es-CO').replace(/\//g,'-');
-  const nombreArchivo = 'copia-cuentas-' + fecha + '.json';
-
+  a.href = url;
+  a.download = `copia-cuentas-${fecha}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   // Guardar fecha de última copia
   lsSet('ultima_copia', new Date().toISOString());
   actualizarInfoCopia();
-
-  // iOS Safari: usar FileReader/data URI
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-  if(isIOS || isSafari){
-    // En iOS no se puede forzar descarga, abrir en nueva pestaña para que el usuario guarde manualmente
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
-    const newTab = window.open(dataUri, '_blank');
-    if(newTab){
-      showToast('📱 Mantén pulsado el archivo para guardarlo');
-    } else {
-      // Si el popup fue bloqueado, mostrar el JSON en un alert para copiarlo
-      const ta = document.createElement('textarea');
-      ta.value = json;
-      ta.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;bottom:10px;z-index:9999;font-size:10px;padding:10px;';
-      ta.id = 'ta-copia-ios';
-      const cerrar = document.createElement('button');
-      cerrar.textContent = '✕ Cerrar';
-      cerrar.style.cssText = 'position:fixed;top:10px;right:10px;z-index:10000;padding:10px 16px;background:#ff3d3d;color:white;border:none;border-radius:10px;font-weight:800;font-size:14px;';
-      cerrar.onclick = function(){ ta.remove(); cerrar.remove(); instruc.remove(); };
-      const instruc = document.createElement('div');
-      instruc.style.cssText = 'position:fixed;top:60px;left:10px;right:10px;z-index:10000;background:#111;color:white;padding:12px;border-radius:12px;font-size:13px;font-weight:700;text-align:center;';
-      instruc.textContent = 'Selecciona todo el texto y cópialo en un archivo .json para guardarlo';
-      document.body.appendChild(ta);
-      document.body.appendChild(cerrar);
-      document.body.appendChild(instruc);
-      ta.select();
-      showToast('📋 Copia el texto y guárdalo como .json');
-    }
-    return;
-  }
-
-  // Navegadores modernos (Chrome, Firefox, Android)
-  try {
-    const blob = new Blob([json], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombreArchivo;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-    showToast('✅ Copia descargada correctamente');
-  } catch(e) {
-    // Fallback: data URI
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
-    const a = document.createElement('a');
-    a.href = dataUri;
-    a.download = nombreArchivo;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('✅ Copia descargada');
-  }
+  showToast('✅ Copia descargada correctamente');
 }
 
 function importarDatos(event){
@@ -3505,6 +3467,201 @@ function imprimirReporteDia(){
   }
 }
 
+// ===== BACKUP DIRECTO =====
+function descargarBackupDirecto(){
+  const clientes=JSON.parse(lsGet('clientes_v1')||'[]');
+  const historial=JSON.parse(lsGet('hist_v3')||'[]');
+  const credenciales=JSON.parse(lsGet('cobrador_credenciales')||'{}');
+  const porcentaje=lsGet('porcentaje_interes')||'20';
+  const manuales={};
+  const hoy=fechaHoy();
+  [...historial.map(h=>h.fecha),hoy].forEach(f=>{
+    const v=lsGet('sup_manual_'+f);
+    if(v) manuales['sup_manual_'+f]=JSON.parse(v);
+  });
+  const backup={
+    version:2,
+    fecha_backup:new Date().toISOString(),
+    clientes, historial, credenciales,
+    porcentaje_interes:porcentaje,
+    manuales
+  };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const nombre='backup_alisson_emily_'+hoy+'.json';
+  a.href=url; a.download=nombre;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ Backup descargado: '+nombre);
+}
+
+// ===== PDF RUTA COMPLETA =====
+function generarPDFRuta(){
+  const fecha = getFechaActiva();
+  const clientes = getClientes();
+  const ahora = new Date();
+  const horaImp = ahora.toLocaleDateString('es-CO')+', '+ahora.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true});
+
+  // Construir filas solo clientes activos
+  let filas=[], recaudado=0, cuotasDia=0, pagaron=0;
+  clientes.forEach((c,i)=>{
+    if(c.saldo<=0) return;
+    const pagosDia=(c.pagos||[]).filter(p=>p.fecha===fecha);
+    const mp=pagosDia.reduce((s,p)=>s+p.monto,0);
+    const cuota=c.cuotaSugerida||0;
+    recaudado+=mp; cuotasDia+=cuota; if(mp>0) pagaron++;
+    const atraso=calcularAtraso(c);
+    filas.push({num:i+1,nombre:c.nombre||'',cedula:c.cedula||'',tel:c.tel||'',
+      tipo:c.tipo?(c.tipo.charAt(0).toUpperCase()+c.tipo.slice(1)):'Diario',
+      total:c.prestamo||0,saldo:c.saldo||0,cuota,atraso,mp});
+  });
+  const totalSaldo=filas.reduce((s,f)=>s+f.saldo,0);
+  const activos=filas.length;
+
+  function estadoStr(atraso,tipo){
+    const u=(tipo||'').toLowerCase()==='semanal'?'s':'d';
+    if(atraso>0) return atraso+u+' atraso';
+    if(atraso<0) return Math.abs(atraso)+u+' adelanto';
+    return 'Al dia';
+  }
+  function fmtN(n){ return Math.abs(n).toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+  function doPDF(){
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+    const pW=215.9, pH=279.4, ML=12, MR=12, UW=pW-ML-MR;
+    const AZUL=[26,26,46], ROJO=[180,0,0], VERDE=[0,120,0], AZUL_E=[0,60,180];
+    const ROJO_F=[255,242,242], GRIS_A=[245,246,255];
+    let y=10;
+
+    // Encabezado
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(0,0,0);
+    doc.text('CLIENTES - RUTA', ML, y+5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(60,60,60);
+    doc.text('FECHA: '+fecha+'  |  IMPRESION: '+horaImp+'  |  CLIENTES ACTIVOS: '+activos, ML, y+11);
+    doc.text('SALDO TOTAL: $'+fmtN(totalSaldo)+'  |  CUOTAS HOY: $'+fmtN(cuotasDia)+'  |  RECAUDADO: $'+fmtN(recaudado)+'  |  PAGARON HOY: '+pagaron+' clientes', ML, y+16);
+    doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
+    doc.line(ML,y+18.5,ML+UW,y+18.5);
+    y+=22;
+
+    // Columnas
+    const cols=[
+      {h:'#',       w:7,   r:true},
+      {h:'CLIENTE', w:0,   r:false, auto:true},
+      {h:'CED',     w:18,  r:false},
+      {h:'TEL',     w:22,  r:false},
+      {h:'TIPO',    w:14,  r:false},
+      {h:'TOTAL',   w:17,  r:true},
+      {h:'SALDO',   w:17,  r:true},
+      {h:'CUOTA',   w:14,  r:true},
+      {h:'ESTADO',  w:22,  r:false},
+      {h:'HOY',     w:14,  r:true},
+    ];
+    // calcular ancho auto de CLIENTE
+    const fixedW=cols.filter(c=>!c.auto).reduce((s,c)=>s+c.w,0);
+    cols[1].w=UW-fixedW;
+
+    const rowH=6.5, headH=7;
+
+    function drawHead(yy){
+      doc.setFillColor(...AZUL);
+      doc.rect(ML,yy,UW,headH,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+      let cx=ML+1;
+      cols.forEach(col=>{
+        doc.text(col.h, col.r?cx+col.w-2:cx, yy+5, {align:col.r?'right':'left'});
+        cx+=col.w;
+      });
+      return yy+headH;
+    }
+
+    function drawFoot(yy){
+      doc.setFillColor(...AZUL);
+      doc.rect(ML,yy,UW,rowH+1,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+      doc.text('TOTALES', ML+1, yy+5);
+      let cx=ML+1;
+      cols.forEach((col,i)=>{
+        if(i===6) doc.text(fmtN(totalSaldo), cx+col.w-2, yy+5, {align:'right'});
+        if(i===7) doc.text(fmtN(cuotasDia),  cx+col.w-2, yy+5, {align:'right'});
+        if(i===9) doc.text(fmtN(recaudado),   cx+col.w-2, yy+5, {align:'right'});
+        cx+=col.w;
+      });
+    }
+
+    y=drawHead(y);
+
+    filas.forEach((f,idx)=>{
+      if(y+rowH>pH-14){
+        // pie de página
+        const np=doc.internal.getCurrentPageInfo().pageNumber;
+        const nt=doc.internal.getNumberOfPages();
+        doc.setFontSize(7); doc.setTextColor(150,150,150);
+        doc.text('Página '+np+' de '+nt+'  |  Alisson & Emily  |  '+fecha, pW/2, pH-5, {align:'center'});
+        doc.addPage();
+        y=10; y=drawHead(y);
+      }
+      // fondo fila
+      if(f.atraso>0){ doc.setFillColor(...ROJO_F); doc.rect(ML,y,UW,rowH,'F'); }
+      else if(idx%2===1){ doc.setFillColor(...GRIS_A); doc.rect(ML,y,UW,rowH,'F'); }
+
+      const vals=[
+        String(f.num), f.nombre, f.cedula, f.tel, f.tipo,
+        fmtN(f.total), fmtN(f.saldo),
+        f.cuota>0?fmtN(f.cuota):'-',
+        estadoStr(f.atraso,f.tipo),
+        f.mp>0?fmtN(f.mp):'-'
+      ];
+      let cx=ML+1;
+      vals.forEach((val,vi)=>{
+        const col=cols[vi];
+        doc.setFontSize(6.5); doc.setFont('helvetica', vi===1||vi===6||vi===9?'bold':'normal');
+        if(vi===6)      doc.setTextColor(...ROJO);
+        else if(vi===8) doc.setTextColor(f.atraso>0?ROJO[0]:f.atraso<0?VERDE[0]:AZUL_E[0], f.atraso>0?ROJO[1]:f.atraso<0?VERDE[1]:AZUL_E[1], f.atraso>0?ROJO[2]:f.atraso<0?VERDE[2]:AZUL_E[2]);
+        else if(vi===9 && f.mp>0) doc.setTextColor(...VERDE);
+        else doc.setTextColor(0,0,0);
+        // truncar nombre
+        let txt=val;
+        if(vi===1) txt=doc.splitTextToSize(val,col.w-2)[0]||val;
+        doc.text(txt, col.r?cx+col.w-2:cx, y+4.5, {align:col.r?'right':'left'});
+        cx+=col.w;
+      });
+      doc.setDrawColor(220,220,220); doc.setLineWidth(0.1);
+      doc.line(ML,y+rowH,ML+UW,y+rowH);
+      y+=rowH;
+    });
+
+    drawFoot(y);
+
+    // Pie última página
+    const np=doc.internal.getCurrentPageInfo().pageNumber;
+    const nt=doc.internal.getNumberOfPages();
+    doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text('Página '+np+' de '+nt+'  |  Alisson & Emily  |  '+fecha, pW/2, pH-5, {align:'center'});
+
+    const blob=doc.output('blob');
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='ruta_'+fecha+'.pdf';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    showToast('✅ PDF descargado: ruta_'+fecha+'.pdf');
+  }
+
+  if(window.jspdf){ doPDF(); }
+  else {
+    showToast('⏳ Cargando generador PDF...');
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=doPDF;
+    s.onerror=()=>showToast('⚠️ Sin conexión para generar PDF');
+    document.head.appendChild(s);
+  }
+}
+
 // ===== INIT =====
 function iniciarApp(){
   document.getElementById('header-fecha').textContent=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -3525,3 +3682,4 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
+ 
