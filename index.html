@@ -509,6 +509,17 @@ body {
 
   <div class="historial-seccion">
     <div class="historial-titulo">📅 Días guardados</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+      <input type="date" id="filtro-historial-fecha"
+        style="flex:1;padding:10px 12px;border:2px solid #e5e7eb;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:#111;background:white;outline:none;"
+        oninput="renderHistorial()"
+        onfocus="this.style.borderColor='#5b8dee'"
+        onblur="this.style.borderColor='#e5e7eb'">
+      <button onclick="document.getElementById('filtro-historial-fecha').value='';renderHistorial();"
+        style="padding:10px 14px;background:#f3f4f6;color:#555;border:1.5px solid #e5e7eb;border-radius:12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;white-space:nowrap;">
+        Ver todos
+      </button>
+    </div>
     <div id="historial-lista"></div>
   </div>
 </div>
@@ -1383,7 +1394,11 @@ function renderHistorial(){
   const h=JSON.parse(lsGet('hist_v3')||'[]');
   const el=document.getElementById('historial-lista');
   if(!h.length){el.innerHTML='<div class="empty-hist">📭 Aún no hay días guardados</div>';return;}
-  el.innerHTML=h.map((d,i)=>{
+  const filtroEl=document.getElementById('filtro-historial-fecha');
+  const filtroFecha=filtroEl?filtroEl.value:'';
+  const hFiltrado=filtroFecha?h.filter(d=>d.fecha===filtroFecha):h;
+  if(!hFiltrado.length){el.innerHTML='<div class="empty-hist">🔍 No hay día guardado para esa fecha</div>';return;}
+  el.innerHTML=hFiltrado.map((d,i)=>{
     const pos=d.resultado>=0,nt=pos?fmt(d.resultado):'-'+fmt(Math.abs(d.resultado)),hs=encodeURIComponent(JSON.stringify(d));
     return `<div class="historial-item">
       <div class="h-top">
@@ -3485,48 +3500,15 @@ function descargarBackupDirecto(){
     porcentaje_interes:porcentaje,
     manuales
   };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
   const nombre='backup_alisson_emily_'+hoy+'.json';
-  const json=JSON.stringify(backup,null,2);
-  const blob=new Blob([json],{type:'application/json'});
-
-  // Intentar Web Share API (funciona en APK Android)
-  if(navigator.share && navigator.canShare){
-    const file=new File([blob], nombre, {type:'application/json'});
-    if(navigator.canShare({files:[file]})){
-      navigator.share({
-        title:'Backup Alisson & Emily',
-        text:'Copia de seguridad '+hoy,
-        files:[file]
-      }).then(()=>showToast('✅ Backup compartido'))
-        .catch(e=>{ if(e.name!=='AbortError') compartirComoTexto(json,nombre); });
-      return;
-    }
-  }
-  // Si no soporta compartir archivos, compartir como texto
-  compartirComoTexto(json, nombre);
-}
-
-function compartirComoTexto(json, nombre){
-  // Intentar descargar normal
-  try{
-    const blob=new Blob([json],{type:'application/octet-stream'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download=nombre;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('✅ Backup guardado: '+nombre);
-  }catch(e){
-    // Último recurso: compartir texto plano
-    if(navigator.share){
-      navigator.share({title:'Backup Alisson & Emily', text:json})
-        .then(()=>showToast('✅ Backup compartido'))
-        .catch(()=>showToast('⚠️ No se pudo compartir'));
-    } else {
-      showToast('⚠️ Este dispositivo no soporta compartir archivos');
-    }
-  }
+  a.href=url; a.download=nombre;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ Backup descargado: '+nombre);
 }
 
 // ===== PDF RUTA COMPLETA =====
